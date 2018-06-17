@@ -28,9 +28,13 @@ use Yansongda\Supports\Str;
  */
 class Wechat implements GatewayApplicationInterface
 {
-    const MODE_NORMAL = 'normal'; // 普通模式
-    const MODE_DEV = 'dev'; // 沙箱模式
-    const MODE_HK = 'hk'; // 香港钱包
+
+    const MODE_NORMAL  = 'normal'; // 普通模式
+
+    const MODE_DEV     = 'dev'; // 沙箱模式
+
+    const MODE_HK      = 'hk'; // 香港钱包
+
     const MODE_SERVICE = 'service'; // 服务商
 
     /**
@@ -68,12 +72,12 @@ class Wechat implements GatewayApplicationInterface
      *
      * @param Config $config
      */
-    public function __construct(Config $config)
+    public function __construct(Config $config, array $args = [])
     {
-        $this->config = $config;
-        $this->mode = $this->config->get('mode', self::MODE_NORMAL);
+        $this->config  = $config;
+        $this->mode    = $this->config->get('mode', self::MODE_NORMAL);
         $this->gateway = Support::baseUri($this->mode);
-        $this->payload = [
+        $this->payload = array_merge([
             'appid'            => $this->config->get('app_id', ''),
             'mch_id'           => $this->config->get('mch_id', ''),
             'nonce_str'        => Str::random(),
@@ -81,9 +85,10 @@ class Wechat implements GatewayApplicationInterface
             'sign'             => '',
             'trade_type'       => '',
             'spbill_create_ip' => Request::createFromGlobals()->getClientIp(),
-        ];
+        ], (array)$this->config->get('args'));
 
-        if ($this->mode === static::MODE_SERVICE) {
+        if ($this->mode === static::MODE_SERVICE)
+        {
             $this->payload = array_merge($this->payload, [
                 'sub_mch_id' => $this->config->get('sub_mch_id'),
                 'sub_appid'  => $this->config->get('sub_app_id', ''),
@@ -105,9 +110,10 @@ class Wechat implements GatewayApplicationInterface
     {
         $this->payload = array_merge($this->payload, $params);
 
-        $gateway = get_class($this).'\\'.Str::studly($gateway).'Gateway';
+        $gateway = get_class($this) . '\\' . Str::studly($gateway) . 'Gateway';
 
-        if (class_exists($gateway)) {
+        if (class_exists($gateway))
+        {
             return $this->makePay($gateway);
         }
 
@@ -123,13 +129,14 @@ class Wechat implements GatewayApplicationInterface
      *
      * @return Collection
      */
-    public function verify($content = null): Collection
-    {
+    public function verify($content = null)
+    : Collection {
         $data = Support::fromXml($content ?? Request::createFromGlobals()->getContent());
 
         Log::debug('Receive Wechat Request:', $data);
 
-        if (Support::generateSign($data, $this->config->get('key')) === $data['sign']) {
+        if (Support::generateSign($data, $this->config->get('key')) === $data['sign'])
+        {
             return new Collection($data);
         }
 
@@ -147,8 +154,8 @@ class Wechat implements GatewayApplicationInterface
      *
      * @return Collection
      */
-    public function find($order): Collection
-    {
+    public function find($order)
+    : Collection {
         $this->payload = Support::filterPayload($this->payload, $order, $this->config);
 
         return Support::requestApi('pay/orderquery', $this->payload, $this->config->get('key'));
@@ -163,16 +170,11 @@ class Wechat implements GatewayApplicationInterface
      *
      * @return Collection
      */
-    public function refund($order): Collection
-    {
+    public function refund($order)
+    : Collection {
         $this->payload = Support::filterPayload($this->payload, $order, $this->config, true);
 
-        return Support::requestApi(
-            'secapi/pay/refund',
-            $this->payload,
-            $this->config->get('key'),
-            ['cert' => $this->config->get('cert_client'), 'ssl_key' => $this->config->get('cert_key')]
-        );
+        return Support::requestApi('secapi/pay/refund', $this->payload, $this->config->get('key'), ['cert' => $this->config->get('cert_client'), 'ssl_key' => $this->config->get('cert_key')]);
     }
 
     /**
@@ -184,8 +186,8 @@ class Wechat implements GatewayApplicationInterface
      *
      * @return Collection
      */
-    public function cancel($order): Collection
-    {
+    public function cancel($order)
+    : Collection {
         throw new GatewayException('Wechat Do Not Have Cancel API! Plase use Close API!');
     }
 
@@ -214,13 +216,10 @@ class Wechat implements GatewayApplicationInterface
      *
      * @return Response
      */
-    public function success(): Response
+    public function success()
+    : Response
     {
-        return Response::create(
-            Support::toXml(['return_code' => 'SUCCESS']),
-            200,
-            ['Content-Type' => 'application/xml']
-        );
+        return Response::create(Support::toXml(['return_code' => 'SUCCESS']), 200, ['Content-Type' => 'application/xml']);
     }
 
     /**
@@ -236,7 +235,8 @@ class Wechat implements GatewayApplicationInterface
     {
         $app = new $gateway($this->config);
 
-        if ($app instanceof GatewayInterface) {
+        if ($app instanceof GatewayInterface)
+        {
             return $app->pay($this->gateway, $this->payload);
         }
 

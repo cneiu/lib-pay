@@ -24,6 +24,7 @@ use Yansongda\Supports\Str;
  */
 class Alipay implements GatewayApplicationInterface
 {
+
     /**
      * Config.
      *
@@ -51,24 +52,25 @@ class Alipay implements GatewayApplicationInterface
      * @author yansongda <me@yansongda.cn>
      *
      * @param Config $config
+     * @param array  $args
      */
-    public function __construct(Config $config)
+    public function __construct(Config $config, array $args = [])
     {
-        $this->config = $config;
+        $this->config  = $config;
         $this->gateway = Support::baseUri($this->config->get('mode', 'normal'));
-        $this->payload = [
-            'app_id'      => $this->config->get('app_id'),
-            'method'      => '',
-            'format'      => 'JSON',
-            'charset'     => 'utf-8',
-            'sign_type'   => 'RSA2',
-            'version'     => '1.0',
-            'return_url'  => $this->config->get('return_url'),
-            'notify_url'  => $this->config->get('notify_url'),
-            'timestamp'   => date('Y-m-d H:i:s'),
-            'sign'        => '',
-            'biz_content' => '',
-        ];
+        $this->payload = array_merge([
+            'app_id'         => $this->config->get('app_id'),
+            'method'         => '',
+            'format'         => 'JSON',
+            'charset'        => 'utf-8',
+            'sign_type'      => 'RSA2',
+            'version'        => '1.0',
+            'return_url'     => $this->config->get('return_url'),
+            'notify_url'     => $this->config->get('notify_url'),
+            'timestamp'      => date('Y-m-d H:i:s'),
+            'sign'           => '',
+            'biz_content'    => ''
+        ], (array)$this->config->get('args'));
     }
 
     /**
@@ -85,9 +87,10 @@ class Alipay implements GatewayApplicationInterface
     {
         $this->payload['biz_content'] = json_encode($params);
 
-        $gateway = get_class($this).'\\'.Str::studly($gateway).'Gateway';
+        $gateway = get_class($this) . '\\' . Str::studly($gateway) . 'Gateway';
 
-        if (class_exists($gateway)) {
+        if (class_exists($gateway))
+        {
             return $this->makePay($gateway);
         }
 
@@ -101,7 +104,8 @@ class Alipay implements GatewayApplicationInterface
      *
      * @return Collection
      */
-    public function verify(): Collection
+    public function verify()
+    : Collection
     {
         $request = Request::createFromGlobals();
 
@@ -111,7 +115,8 @@ class Alipay implements GatewayApplicationInterface
 
         Log::debug('Receive Alipay Request:', $data);
 
-        if (Support::verifySign($data, $this->config->get('ali_public_key'))) {
+        if (Support::verifySign($data, $this->config->get('ali_public_key')))
+        {
             return new Collection($data);
         }
 
@@ -129,11 +134,11 @@ class Alipay implements GatewayApplicationInterface
      *
      * @return Collection
      */
-    public function find($order): Collection
-    {
-        $this->payload['method'] = 'alipay.trade.query';
+    public function find($order)
+    : Collection {
+        $this->payload['method']      = 'alipay.trade.query';
         $this->payload['biz_content'] = json_encode(is_array($order) ? $order : ['out_trade_no' => $order]);
-        $this->payload['sign'] = Support::generateSign($this->payload, $this->config->get('private_key'));
+        $this->payload['sign']        = Support::generateSign($this->payload, $this->config->get('private_key'));
 
         Log::debug('Find An Order:', [$this->gateway, $this->payload]);
 
@@ -149,11 +154,11 @@ class Alipay implements GatewayApplicationInterface
      *
      * @return Collection
      */
-    public function refund($order): Collection
-    {
-        $this->payload['method'] = 'alipay.trade.refund';
+    public function refund($order)
+    : Collection {
+        $this->payload['method']      = 'alipay.trade.refund';
         $this->payload['biz_content'] = json_encode($order);
-        $this->payload['sign'] = Support::generateSign($this->payload, $this->config->get('private_key'));
+        $this->payload['sign']        = Support::generateSign($this->payload, $this->config->get('private_key'));
 
         Log::debug('Refund An Order:', [$this->gateway, $this->payload]);
 
@@ -169,11 +174,11 @@ class Alipay implements GatewayApplicationInterface
      *
      * @return Collection
      */
-    public function cancel($order): Collection
-    {
-        $this->payload['method'] = 'alipay.trade.cancel';
+    public function cancel($order)
+    : Collection {
+        $this->payload['method']      = 'alipay.trade.cancel';
         $this->payload['biz_content'] = json_encode(is_array($order) ? $order : ['out_trade_no' => $order]);
-        $this->payload['sign'] = Support::generateSign($this->payload, $this->config->get('private_key'));
+        $this->payload['sign']        = Support::generateSign($this->payload, $this->config->get('private_key'));
 
         Log::debug('Cancel An Order:', [$this->gateway, $this->payload]);
 
@@ -189,11 +194,11 @@ class Alipay implements GatewayApplicationInterface
      *
      * @return Collection
      */
-    public function close($order): Collection
-    {
-        $this->payload['method'] = 'alipay.trade.close';
+    public function close($order)
+    : Collection {
+        $this->payload['method']      = 'alipay.trade.close';
         $this->payload['biz_content'] = json_encode(is_array($order) ? $order : ['out_trade_no' => $order]);
-        $this->payload['sign'] = Support::generateSign($this->payload, $this->config->get('private_key'));
+        $this->payload['sign']        = Support::generateSign($this->payload, $this->config->get('private_key'));
 
         Log::debug('Close An Order:', [$this->gateway, $this->payload]);
 
@@ -209,11 +214,11 @@ class Alipay implements GatewayApplicationInterface
      *
      * @return string
      */
-    public function download($bill): string
-    {
-        $this->payload['method'] = 'alipay.data.dataservice.bill.downloadurl.query';
+    public function download($bill)
+    : string {
+        $this->payload['method']      = 'alipay.data.dataservice.bill.downloadurl.query';
         $this->payload['biz_content'] = json_encode(is_array($bill) ? $bill : ['bill_type' => 'trade', 'bill_date' => $bill]);
-        $this->payload['sign'] = Support::generateSign($this->payload, $this->config->get('private_key'));
+        $this->payload['sign']        = Support::generateSign($this->payload, $this->config->get('private_key'));
 
         Log::debug('Download Bill:', [$this->gateway, $this->payload]);
 
@@ -229,7 +234,8 @@ class Alipay implements GatewayApplicationInterface
      *
      * @return Response
      */
-    public function success(): Response
+    public function success()
+    : Response
     {
         return Response::create('success');
     }
@@ -247,7 +253,8 @@ class Alipay implements GatewayApplicationInterface
     {
         $app = new $gateway($this->config);
 
-        if ($app instanceof GatewayInterface) {
+        if ($app instanceof GatewayInterface)
+        {
             return $app->pay($this->gateway, $this->payload);
         }
 
